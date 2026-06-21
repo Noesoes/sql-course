@@ -234,11 +234,87 @@ INSERT INTO order_items VALUES
 
 /* ---------- lessons ---------- */
 const LESSONS = [
-{ id:'intro', section:'Basics', title:'Welcome & SELECT',
-  body:`<p>SQL (Structured Query Language) is how you ask questions of a relational database.
-  Every query you write here runs against a <b>real in-browser SQLite database</b> seeded with
-  company data: departments, employees, customers, products, orders and order_items.</p>
-  <p>The simplest query selects columns from a table:</p>
+{ id:'what-is-db', section:'Introduction', title:'What is a Database?',
+  body:`<p>Welcome! No experience needed — we'll build up from scratch.</p>
+  <p>A <b>database</b> is just an organized place to store information, broken into
+  <b>tables</b>. Think of a table like a spreadsheet: it has <b>rows</b> (one per item — one row
+  per employee, one row per customer) and <b>columns</b> (the fields each item has — a name, a
+  price, a date).</p>
+  <p>This course gives you a small pretend company database to practice on, with tables like
+  <code>employees</code>, <code>customers</code>, and <code>products</code>. You can see exactly
+  what's inside any table anytime — click the <b>🗄 Schema</b> button in the top-right corner of the
+  screen, then click <b>👁 view data</b> next to a table name.</p>
+  <p>Go ahead and try that now if you like — then come back and run the exercise below.</p>`,
+  task:`Every exercise in this course gives you a box to type SQL into, and a <b>Run</b> button.
+  Let's try it: type the query below into the box (or it may already be there) and click
+  <b>▶ Run</b> to see the <code>customers</code> table's data appear underneath. Then click
+  <b>✓ Check Answer</b>.`,
+  starter:`SELECT * FROM customers;`,
+  solution:`SELECT * FROM customers;`,
+  hint:`Just click Run with the query already in the box — that's it!`
+},
+{ id:'what-is-sql', section:'Introduction', title:'What is SQL?',
+  body:`<p><b>SQL</b> (pronounced "sequel" or spelled out "S-Q-L") stands for
+  <i>Structured Query Language</i>. It's a language for asking a database questions — "show me
+  all the customers," "what's the average price?," "which orders are still pending?" — and for
+  changing the data when you need to.</p>
+  <p>A SQL <b>statement</b> (often called a <b>query</b> when it's a question, like a SELECT) is
+  made of <b>keywords</b> (like <code>SELECT</code> and <code>FROM</code>) plus the names of the
+  tables and columns you care about. A few things that trip up beginners:</p>
+  <ul>
+    <li>Keywords are usually written in CAPS by convention, but SQL doesn't actually care about
+    case — <code>select</code> works exactly the same as <code>SELECT</code>.</li>
+    <li>Statements are traditionally ended with a semicolon <code>;</code> — good habit, even
+    though this course's editor doesn't strictly require it for a single statement.</li>
+    <li>Text values (like a name) go in <code>'single quotes'</code>. Numbers don't need quotes.</li>
+  </ul>`,
+  task:`Try writing the same kind of query yourself, for a different table this time. Select
+  everything from <code>departments</code>.`,
+  starter:`SELECT * FROM departments;`,
+  solution:`SELECT * FROM departments;`,
+  hint:`SELECT * FROM departments; — same shape as before, just a different table name.`
+},
+{ id:'tables-rows-cols', section:'Introduction', title:'Tables, Rows & Columns',
+  body:`<p>Let's slow down on vocabulary, since it comes up constantly:</p>
+  <ul>
+    <li>A <b>table</b> holds one kind of thing — e.g. <code>products</code> holds products.</li>
+    <li>A <b>row</b> (also called a <b>record</b>) is one single item in that table — one
+    specific product.</li>
+    <li>A <b>column</b> (also called a <b>field</b>) is one piece of information every row has —
+    every product has a <code>name</code>, a <code>category</code>, and a <code>price</code>.</li>
+  </ul>
+  <p>So far we've used <code>SELECT *</code> to grab <i>every</i> column. Often you only want
+  specific ones — just list the column names you want, separated by commas, instead of <code>*</code>:</p>
+  <pre class="example">SELECT name, price FROM products;</pre>
+  <p>Open the <b>🗄 Schema</b> panel anytime to see exactly which columns each table has — you'll
+  need that to know what names are available to ask for.</p>`,
+  task:`Select just the <code>name</code> and <code>price</code> columns (not all of them) from
+  <code>products</code>.`,
+  starter:`SELECT name, price FROM products;`,
+  solution:`SELECT name, price FROM products;`,
+  hint:`List the column names you want, separated by a comma, right after SELECT.`
+},
+{ id:'anatomy', section:'Introduction', title:'Anatomy of a Query',
+  body:`<p>Every query we've written so far follows the exact same skeleton — this is the
+  pattern you'll use constantly throughout the rest of the course:</p>
+  <pre class="example">SELECT  column1, column2   -- which columns do you want?
+FROM    table_name         -- which table are they in?
+;                           -- this ends the statement</pre>
+  <p>(The <code>-- text</code> bits above are <b>comments</b> — SQL ignores anything after
+  <code>--</code> on a line. They're just notes for humans reading the query, not instructions.)</p>
+  <p>That's the whole foundation. Everything coming up next — filtering rows, sorting, combining
+  tables, calculating totals — just adds more pieces onto this same <code>SELECT ... FROM ...</code>
+  skeleton.</p>`,
+  task:`One more for practice: select the <code>name</code> and <code>city</code> columns from
+  <code>customers</code>.`,
+  starter:`SELECT name, city FROM customers;`,
+  solution:`SELECT name, city FROM customers;`,
+  hint:`SELECT name, city FROM customers;`
+},
+{ id:'intro', section:'Basics', title:'SELECT, recap',
+  body:`<p>Quick recap before we pick up the pace: every query you write here runs against a
+  <b>real in-browser SQLite database</b> seeded with company data — departments, employees,
+  customers, products, orders and order_items.</p>
   <pre class="example">SELECT name, salary FROM employees;</pre>
   <p><code>SELECT</code> picks columns, <code>FROM</code> picks the table. Use <code>*</code> to select all columns.</p>`,
   task:`Select the <code>name</code> and <code>hire_date</code> columns from <code>employees</code>.`,
