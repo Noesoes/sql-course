@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SQL Interactive Course</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0f1117; --panel:#171a23; --panel2:#1d212c; --border:#2a2f3d;
+    --text:#e6e8ee; --dim:#9aa3b2; --accent:#5b9dff; --good:#3ecf8e; --bad:#ff5d5d;
+    --mono: 'Consolas','SF Mono',Menlo,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:Segoe UI,system-ui,sans-serif;}
+  #app{display:flex;height:100vh;}
+  #sidebar-toggle{display:none;position:fixed;left:14px;top:14px;z-index:11;width:38px;height:38px;
+    padding:0;align-items:center;justify-content:center;font-size:18px;}
+  #sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9;}
+  #sidebar-overlay.show{display:block;}
+  #sidebar{width:280px;flex:0 0 280px;background:var(--panel);border-right:1px solid var(--border);
+    overflow-y:auto;padding:14px 0;}
+  #sidebar h1{font-size:15px;margin:0 16px 12px;color:var(--text);}
+  #progress{margin:0 16px 14px;font-size:12px;color:var(--dim);}
+  #progress-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:6px;}
+  #progress-fill{height:100%;background:var(--accent);width:0%;transition:width .3s;}
+  .section-title{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim);
+    margin:16px 16px 6px;}
+  .lesson-item{padding:8px 16px;cursor:pointer;font-size:13.5px;display:flex;align-items:center;gap:8px;
+    border-left:3px solid transparent;}
+  .lesson-item:hover{background:var(--panel2);}
+  .lesson-item.active{background:var(--panel2);border-left-color:var(--accent);color:var(--accent);}
+  .check{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--border);flex:0 0 14px;
+    display:flex;align-items:center;justify-content:center;font-size:9px;}
+  .check.done{background:var(--good);border-color:var(--good);color:#04150c;}
+  #main{flex:1;overflow-y:auto;padding:28px 36px 60px;max-width:980px;}
+  h2{margin-top:0;font-size:22px;}
+  .lesson-body p{line-height:1.55;color:#c9cdd6;}
+  .lesson-body code, code{background:#11141c;border:1px solid var(--border);padding:1px 6px;
+    border-radius:4px;font-family:var(--mono);font-size:.92em;color:#ffd479;}
+  pre.example{background:#11141c;border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+    font-family:var(--mono);font-size:13px;overflow-x:auto;color:#9fd6ff;}
+  .task{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:16px 18px;
+    margin-top:18px;}
+  .task h3{margin:0 0 8px;font-size:14px;color:var(--accent);}
+  textarea#editor{width:100%;min-height:90px;background:#0c0e14;color:#e6e8ee;border:1px solid var(--border);
+    border-radius:8px;font-family:var(--mono);font-size:14px;padding:10px 12px;resize:vertical;}
+  .btnrow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  button{background:var(--accent);color:#06101f;border:none;border-radius:7px;padding:8px 14px;
+    font-size:13px;font-weight:600;cursor:pointer;}
+  button.secondary{background:transparent;color:var(--dim);border:1px solid var(--border);}
+  button.secondary:hover{color:var(--text);border-color:var(--accent);}
+  button:active{transform:translateY(1px);}
+  #result-area{margin-top:14px;}
+  .feedback{margin-top:10px;padding:8px 12px;border-radius:7px;font-size:13px;}
+  .feedback.ok{background:rgba(62,207,142,.12);color:var(--good);border:1px solid rgba(62,207,142,.4);}
+  .feedback.err{background:rgba(255,93,93,.12);color:var(--bad);border:1px solid rgba(255,93,93,.4);}
+  table.result{border-collapse:collapse;font-size:12.5px;margin-top:8px;font-family:var(--mono);}
+  table.result th,table.result td{border:1px solid var(--border);padding:4px 9px;text-align:left;}
+  table.result th{background:#11141c;color:var(--accent);}
+  table.result tr:nth-child(even) td{background:#13151d;}
+  .hint{font-size:12.5px;color:var(--dim);margin-top:8px;cursor:pointer;text-decoration:underline;
+    display:inline-block;}
+  .hintbox{margin-top:6px;font-size:13px;color:#c9cdd6;display:none;}
+  .solbox{margin-top:6px;display:none;}
+  #schema-panel{position:fixed;right:0;top:0;width:300px;height:100vh;background:var(--panel);
+    border-left:1px solid var(--border);transform:translateX(100%);transition:transform .25s, width .2s;
+    overflow-y:auto;padding:16px;z-index:5;}
+  #schema-panel.open{transform:translateX(0);}
+  #schema-panel.wide{width:560px;}
+  #schema-toggle{position:fixed;right:16px;top:16px;z-index:6;}
+  .tbl-def{margin-bottom:14px;}
+  .tbl-def-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .tbl-def h4{margin:0 0 4px;color:var(--accent);font-size:13px;font-family:var(--mono);}
+  .tbl-def ul{margin:0;padding-left:16px;font-size:12px;color:#c9cdd6;font-family:var(--mono);}
+  .preview-btn{background:transparent;color:var(--dim);border:1px solid var(--border);
+    padding:2px 8px;font-size:11px;font-weight:500;border-radius:6px;cursor:pointer;}
+  .preview-btn:hover{color:var(--text);border-color:var(--accent);}
+  .preview-wrap{margin-top:8px;overflow-x:auto;display:none;}
+  .preview-wrap.shown{display:block;}
+  .preview-wrap table.result{font-size:11.5px;}
+  .preview-wrap th, .preview-wrap td{padding:3px 7px;}
+  #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1d212c;
+    border:1px solid var(--border);padding:8px 16px;border-radius:8px;font-size:13px;opacity:0;
+    transition:opacity .3s;pointer-events:none;}
+  .loading{padding:60px;text-align:center;color:var(--dim);}
+  .tablewrap{overflow-x:auto;}
+
+  @media (max-width: 768px){
+    #sidebar-toggle{display:flex;}
+    #sidebar{position:fixed;left:0;top:0;height:100vh;width:78vw;max-width:300px;z-index:10;
+      transform:translateX(-100%);transition:transform .25s;padding-top:60px;}
+    #sidebar.open{transform:translateX(0);}
+    #main{padding:64px 16px 50px;max-width:100%;}
+    .btnrow{gap:6px;}
+    .btnrow button{padding:10px 13px;font-size:13px;}
+    textarea#editor{font-size:16px;}
+    #schema-toggle{top:14px;right:14px;padding:9px 12px;}
+    #schema-panel, #schema-panel.wide{width:100vw;}
+    table.result{font-size:11.5px;}
+    table.result th, table.result td{padding:4px 7px;}
+  }
+</style>
+</head>
+<body>
+<button id="sidebar-toggle" class="secondary" onclick="toggleSidebar()">☰</button>
+<div id="sidebar-overlay" onclick="toggleSidebar(false)"></div>
+<div id="app">
+  <div id="sidebar">
+    <h1>📘 SQL Interactive Course</h1>
+    <div id="progress">Progress: <span id="progress-text">0/0</span>
+      <div id="progress-bar"><div id="progress-fill"></div></div>
+    </div>
+    <div id="lesson-list"></div>
+  </div>
+  <div id="main"><div class="loading">Loading SQL engine…</div></div>
+</div>
+<button id="schema-toggle" class="secondary" onclick="toggleSchema()">🗄 Schema</button>
+<div id="schema-panel"></div>
+<div id="toast"></div>
+
+<script src="sql-wasm-base64.js"></script>
+<script src="sql-wasm.js"></script>
+<script>
+/* ---------- sample database ---------- */
+const SCHEMA_SQL = `
+CREATE TABLE departments (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  location TEXT
+);
+CREATE TABLE employees (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  department_id INTEGER,
+  manager_id INTEGER,
+  salary INTEGER,
+  hire_date TEXT,
+  FOREIGN KEY (department_id) REFERENCES departments(id)
+);
+CREATE TABLE customers (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  city TEXT,
+  country TEXT
+);
+CREATE TABLE products (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  category TEXT,
+  price REAL
+);
+CREATE TABLE orders (
+  id INTEGER PRIMARY KEY,
+  customer_id INTEGER,
+  employee_id INTEGER,
+  order_date TEXT,
+  status TEXT,
+  FOREIGN KEY (customer_id) REFERENCES customers(id),
+  FOREIGN KEY (employee_id) REFERENCES employees(id)
+);
+CREATE TABLE order_items (
+  id INTEGER PRIMARY KEY,
+  order_id INTEGER,
+  product_id INTEGER,
+  quantity INTEGER,
+  unit_price REAL,
+  FOREIGN KEY (order_id) REFERENCES orders(id),
+  FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+INSERT INTO departments VALUES
+ (1,'Engineering','Seattle'),
+ (2,'Sales','Chicago'),
+ (3,'Marketing','New York'),
+ (4,'Support','Remote');
+
+INSERT INTO employees VALUES
+ (1,'Alice Kim',1,NULL,135000,'2018-03-01'),
+ (2,'Brian Osei',1,1,98000,'2019-07-15'),
+ (3,'Carla Nuñez',1,1,101000,'2020-01-20'),
+ (4,'Derek Hall',2,NULL,88000,'2017-11-05'),
+ (5,'Erin Walsh',2,4,76000,'2021-06-10'),
+ (6,'Farid Khan',3,NULL,92000,'2019-02-28'),
+ (7,'Grace Lin',3,6,71000,'2022-09-01'),
+ (8,'Hassan Ali',4,NULL,65000,'2020-05-18'),
+ (9,'Ivy Chen',4,8,62000,'2023-01-09'),
+ (10,'Jon Park',2,4,81000,'2022-03-22');
+
+INSERT INTO customers VALUES
+ (1,'Northwind Traders','Portland','USA'),
+ (2,'Blue Harbor LLC','Toronto','Canada'),
+ (3,'Sunset Retail','Austin','USA'),
+ (4,'Maple & Co','Vancouver','Canada'),
+ (5,'Globex Inc','London','UK'),
+ (6,'Riverside Goods','Denver','USA');
+
+INSERT INTO products VALUES
+ (1,'Wireless Mouse','Electronics',24.99),
+ (2,'Mechanical Keyboard','Electronics',79.99),
+ (3,'Standing Desk','Furniture',349.00),
+ (4,'Office Chair','Furniture',189.50),
+ (5,'Notebook Pack','Office Supplies',9.99),
+ (6,'Desk Lamp','Furniture',34.95),
+ (7,'USB-C Hub','Electronics',39.99),
+ (8,'Whiteboard','Office Supplies',54.00);
+
+INSERT INTO orders VALUES
+ (1,1,5,'2023-01-05','completed'),
+ (2,2,5,'2023-01-18','completed'),
+ (3,3,10,'2023-02-02','completed'),
+ (4,1,5,'2023-02-20','cancelled'),
+ (5,4,10,'2023-03-11','completed'),
+ (6,5,4,'2023-03-15','completed'),
+ (7,6,10,'2023-04-01','pending'),
+ (8,2,5,'2023-04-22','completed'),
+ (9,3,4,'2023-05-09','completed'),
+ (10,1,10,'2023-05-30','pending');
+
+INSERT INTO order_items VALUES
+ (1,1,1,2,24.99),
+ (2,1,5,3,9.99),
+ (3,2,2,1,79.99),
+ (4,3,3,1,349.00),
+ (5,3,6,2,34.95),
+ (6,5,4,2,189.50),
+ (7,6,7,1,39.99),
+ (8,6,5,5,9.99),
+ (9,7,8,1,54.00),
+ (10,8,2,1,79.99),
+ (11,9,1,4,24.99),
+ (12,9,7,2,39.99),
+ (13,10,3,1,349.00);
+`;
+
+/* ---------- lessons ---------- */
+const LESSONS = [
+{ id:'intro', section:'Basics', title:'Welcome & SELECT',
+  body:`<p>SQL (Structured Query Language) is how you ask questions of a relational database.
+  Every query you write here runs against a <b>real in-browser SQLite database</b> seeded with
+  company data: departments, employees, customers, products, orders and order_items.</p>
+  <p>The simplest query selects columns from a table:</p>
+  <pre class="example">SELECT name, salary FROM employees;</pre>
+  <p><code>SELECT</code> picks columns, <code>FROM</code> picks the table. Use <code>*</code> to select all columns.</p>`,
+  task:`Select the <code>name</code> and <code>hire_date</code> columns from <code>employees</code>.`,
+  starter:`SELECT name, hire_date\nFROM employees;`,
+  solution:`SELECT name, hire_date FROM employees;`,
+  hint:`Column list goes right after SELECT, table name goes after FROM.`
+},
+{ id:'where', section:'Basics', title:'Filtering with WHERE',
+  body:`<p><code>WHERE</code> filters rows before they're returned. You can compare with
+  <code>=</code>, <code>!=</code>, <code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code>,
+  and combine conditions with <code>AND</code> / <code>OR</code>.</p>
+  <pre class="example">SELECT name, salary FROM employees WHERE salary > 90000;</pre>`,
+  task:`Find all employees in department <code>1</code> with a salary greater than <code>100000</code>.
+  Return <code>name</code> and <code>salary</code>.`,
+  starter:`SELECT name, salary\nFROM employees\nWHERE ...`,
+  solution:`SELECT name, salary FROM employees WHERE department_id = 1 AND salary > 100000;`,
+  hint:`Combine two conditions with AND: department_id = 1 AND salary > 100000.`
+},
+{ id:'like-in', section:'Basics', title:'LIKE, IN, BETWEEN',
+  body:`<p>More filter tools:</p>
+  <ul>
+   <li><code>LIKE '%pattern%'</code> for partial text match (case-insensitive in SQLite)</li>
+   <li><code>IN (1,2,3)</code> to match any value in a list</li>
+   <li><code>BETWEEN a AND b</code> for inclusive ranges</li>
+  </ul>
+  <pre class="example">SELECT name FROM products WHERE category IN ('Furniture','Office Supplies');</pre>`,
+  task:`Select the <code>name</code> and <code>price</code> of products priced <code>BETWEEN 20 AND 100</code>.`,
+  starter:`SELECT name, price\nFROM products\nWHERE ...`,
+  solution:`SELECT name, price FROM products WHERE price BETWEEN 20 AND 100;`,
+  hint:`price BETWEEN 20 AND 100`
+},
+{ id:'order-limit', section:'Basics', title:'ORDER BY & LIMIT',
+  body:`<p><code>ORDER BY column DESC/ASC</code> sorts results. <code>LIMIT n</code> caps the number of rows.</p>
+  <pre class="example">SELECT name, price FROM products ORDER BY price DESC LIMIT 3;</pre>`,
+  task:`Return the 3 highest-paid employees: <code>name</code> and <code>salary</code>, highest first.`,
+  starter:`SELECT name, salary\nFROM employees\nORDER BY ...\nLIMIT ...`,
+  solution:`SELECT name, salary FROM employees ORDER BY salary DESC LIMIT 3;`,
+  hint:`ORDER BY salary DESC, then LIMIT 3.`
+},
+{ id:'aggregates', section:'Aggregation', title:'Aggregate functions',
+  body:`<p>Aggregate functions summarize many rows into one value: <code>COUNT()</code>, <code>SUM()</code>,
+  <code>AVG()</code>, <code>MIN()</code>, <code>MAX()</code>.</p>
+  <pre class="example">SELECT COUNT(*) AS total_employees, AVG(salary) AS avg_salary FROM employees;</pre>`,
+  task:`Find the total number of products and the maximum product price. Name the columns
+  <code>total_products</code> and <code>max_price</code>.`,
+  starter:`SELECT COUNT(*) AS total_products, MAX(price) AS max_price\nFROM products;`,
+  solution:`SELECT COUNT(*) AS total_products, MAX(price) AS max_price FROM products;`,
+  hint:`COUNT(*) counts rows; MAX(price) finds the largest price. Use AS to rename columns.`
+},
+{ id:'groupby', section:'Aggregation', title:'GROUP BY',
+  body:`<p><code>GROUP BY</code> buckets rows that share a value, so aggregate functions run per-bucket
+  instead of over the whole table.</p>
+  <pre class="example">SELECT department_id, COUNT(*) AS headcount
+FROM employees
+GROUP BY department_id;</pre>`,
+  task:`For each <code>category</code> in <code>products</code>, show the category and the average price
+  as <code>avg_price</code>.`,
+  starter:`SELECT category, AVG(price) AS avg_price\nFROM products\nGROUP BY category;`,
+  solution:`SELECT category, AVG(price) AS avg_price FROM products GROUP BY category;`,
+  hint:`GROUP BY category, then AVG(price) AS avg_price.`
+},
+{ id:'having', section:'Aggregation', title:'HAVING',
+  body:`<p><code>WHERE</code> filters rows before grouping; <code>HAVING</code> filters groups
+  after aggregation.</p>
+  <pre class="example">SELECT department_id, AVG(salary) AS avg_salary
+FROM employees
+GROUP BY department_id
+HAVING AVG(salary) > 90000;</pre>`,
+  task:`Show each <code>category</code> and its <code>COUNT(*)</code> as <code>num_products</code>,
+  but only for categories with more than 2 products.`,
+  starter:`SELECT category, COUNT(*) AS num_products\nFROM products\nGROUP BY category\nHAVING ...`,
+  solution:`SELECT category, COUNT(*) AS num_products FROM products GROUP BY category HAVING COUNT(*) > 2;`,
+  hint:`HAVING COUNT(*) > 2 goes after GROUP BY.`
+},
+{ id:'inner-join', section:'Joins', title:'INNER JOIN',
+  body:`<p>Joins combine rows from two tables based on a matching column. <code>INNER JOIN</code>
+  only keeps rows that match in both tables.</p>
+  <pre class="example">SELECT e.name, d.name AS department
+FROM employees e
+INNER JOIN departments d ON e.department_id = d.id;</pre>
+  <p>Table aliases (<code>e</code>, <code>d</code>) keep things short when referencing columns.</p>`,
+  task:`List each order's <code>id</code> and the customer's <code>name</code>, by joining
+  <code>orders</code> with <code>customers</code>.`,
+  starter:`SELECT o.id, c.name\nFROM orders o\nJOIN customers c ON ...`,
+  solution:`SELECT o.id, c.name FROM orders o JOIN customers c ON o.customer_id = c.id;`,
+  hint:`Join condition: o.customer_id = c.id`
+},
+{ id:'left-join', section:'Joins', title:'LEFT JOIN',
+  body:`<p><code>LEFT JOIN</code> keeps every row from the left table, filling in <code>NULL</code>
+  for unmatched right-table columns. Useful for finding "things with no related rows".</p>
+  <pre class="example">SELECT c.name, o.id AS order_id
+FROM customers c
+LEFT JOIN orders o ON o.customer_id = c.id
+WHERE o.id IS NULL;</pre>`,
+  task:`Find employees who are <b>not</b> managers of anyone, i.e. employees whose <code>id</code>
+  never appears in <code>employees.manager_id</code>. Return their <code>name</code>.
+  (Hint: LEFT JOIN employees to itself on manager_id = id, keep rows where the match is NULL.)`,
+  starter:`SELECT e1.name\nFROM employees e1\nLEFT JOIN employees e2 ON e2.manager_id = e1.id\nWHERE e2.id IS NULL;`,
+  solution:`SELECT e1.name FROM employees e1 LEFT JOIN employees e2 ON e2.manager_id = e1.id WHERE e2.id IS NULL;`,
+  hint:`Self-join employees to itself: e2.manager_id = e1.id, then filter e2.id IS NULL.`
+},
+{ id:'multi-join', section:'Joins', title:'Joining 3+ tables',
+  body:`<p>You can chain multiple JOINs to pull together data spread across several tables.</p>
+  <pre class="example">SELECT o.id, c.name AS customer, p.name AS product, oi.quantity
+FROM orders o
+JOIN customers c ON c.id = o.customer_id
+JOIN order_items oi ON oi.order_id = o.id
+JOIN products p ON p.id = oi.product_id;</pre>`,
+  task:`For order <code>id = 9</code>, list the product <code>name</code> and <code>quantity</code> purchased,
+  by joining <code>order_items</code> and <code>products</code>.`,
+  starter:`SELECT p.name, oi.quantity\nFROM order_items oi\nJOIN products p ON ...\nWHERE oi.order_id = 9;`,
+  solution:`SELECT p.name, oi.quantity FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = 9;`,
+  hint:`Join on p.id = oi.product_id, then WHERE oi.order_id = 9.`
+},
+{ id:'subquery', section:'Subqueries', title:'Subqueries',
+  body:`<p>A subquery is a query nested inside another, often used inside <code>WHERE</code>
+  or as a derived table.</p>
+  <pre class="example">SELECT name, salary FROM employees
+WHERE salary > (SELECT AVG(salary) FROM employees);</pre>`,
+  task:`Find the names of products priced above the overall average product price.`,
+  starter:`SELECT name FROM products\nWHERE price > (SELECT ... );`,
+  solution:`SELECT name FROM products WHERE price > (SELECT AVG(price) FROM products);`,
+  hint:`Subquery: (SELECT AVG(price) FROM products)`
+},
+{ id:'case', section:'Subqueries', title:'CASE expressions',
+  body:`<p><code>CASE</code> lets you add conditional logic directly in a query, like an inline if/else.</p>
+  <pre class="example">SELECT name, salary,
+  CASE WHEN salary >= 100000 THEN 'high' ELSE 'standard' END AS tier
+FROM employees;</pre>`,
+  task:`For each order, return its <code>id</code>, <code>status</code>, and a column <code>is_done</code>
+  that is <code>'yes'</code> when status = 'completed' and <code>'no'</code> otherwise.`,
+  starter:`SELECT id, status,\n  CASE WHEN status = 'completed' THEN 'yes' ELSE 'no' END AS is_done\nFROM orders;`,
+  solution:`SELECT id, status, CASE WHEN status = 'completed' THEN 'yes' ELSE 'no' END AS is_done FROM orders;`,
+  hint:`CASE WHEN status = 'completed' THEN 'yes' ELSE 'no' END AS is_done`
+},
+{ id:'insert-update-delete', section:'Modifying Data', title:'INSERT, UPDATE, DELETE',
+  body:`<p>Beyond reading data, SQL modifies it too:</p>
+  <pre class="example">INSERT INTO products (name, category, price) VALUES ('Webcam','Electronics',45.00);
+UPDATE products SET price = 39.99 WHERE name = 'Webcam';
+DELETE FROM products WHERE name = 'Webcam';</pre>
+  <p>Try it below — this sandbox database resets if you reload the page.</p>`,
+  task:`Insert a new department: <code>(name='Finance', location='Boston')</code> into <code>departments</code>.
+  Then verify with a SELECT (the checker just runs your statement(s) and checks the table).`,
+  starter:`INSERT INTO departments (name, location) VALUES ('Finance', 'Boston');`,
+  solution:`INSERT INTO departments (name, location) VALUES ('Finance', 'Boston');`,
+  hint:`INSERT INTO departments (name, location) VALUES ('Finance', 'Boston');`,
+  checkMode:'table', checkTable:'departments'
+},
+{ id:'union', section:'Advanced', title:'UNION',
+  body:`<p><code>UNION</code> stacks the results of two queries with the same number of columns,
+  removing duplicates. Use <code>UNION ALL</code> to keep duplicates.</p>
+  <pre class="example">SELECT name FROM customers WHERE country = 'USA'
+UNION
+SELECT name FROM customers WHERE country = 'Canada';</pre>`,
+  task:`Return a single list combining all <code>employees.name</code> and all <code>customers.name</code>
+  (one column, named <code>name</code>), with no duplicates.`,
+  starter:`SELECT name FROM employees\nUNION\nSELECT name FROM customers;`,
+  solution:`SELECT name FROM employees UNION SELECT name FROM customers;`,
+  hint:`SELECT name FROM employees UNION SELECT name FROM customers;`
+},
+{ id:'window', section:'Advanced', title:'Window functions',
+  body:`<p>Window functions compute values across a set of rows related to the current row, without
+  collapsing them like GROUP BY does. <code>RANK()</code>, <code>ROW_NUMBER()</code>, and
+  <code>OVER (PARTITION BY ... ORDER BY ...)</code> are the key pieces.</p>
+  <pre class="example">SELECT name, department_id, salary,
+  RANK() OVER (PARTITION BY department_id ORDER BY salary DESC) AS dept_rank
+FROM employees;</pre>`,
+  task:`For every employee, show <code>name</code>, <code>department_id</code>, and their salary
+  rank within their department as <code>dept_rank</code> (highest salary = rank 1).`,
+  starter:`SELECT name, department_id,\n  RANK() OVER (PARTITION BY department_id ORDER BY salary DESC) AS dept_rank\nFROM employees;`,
+  solution:`SELECT name, department_id, RANK() OVER (PARTITION BY department_id ORDER BY salary DESC) AS dept_rank FROM employees;`,
+  hint:`RANK() OVER (PARTITION BY department_id ORDER BY salary DESC) AS dept_rank`
+},
+{ id:'sandbox', section:'Advanced', title:'Free-Play Sandbox',
+  body:`<p>No checker here — explore freely. Try writing a query that finds the total revenue
+  (<code>quantity * unit_price</code>) per customer, or the best-selling product, or anything else
+  that interests you. Use the schema panel (top-right) as a reference.</p>`,
+  task:`Open-ended practice. Write any query you like and click Run.`,
+  starter:`SELECT c.name AS customer, SUM(oi.quantity * oi.unit_price) AS revenue
+FROM orders o
+JOIN customers c ON c.id = o.customer_id
+JOIN order_items oi ON oi.order_id = o.id
+GROUP BY c.name
+ORDER BY revenue DESC;`,
+  noCheck:true
+},
+];
+
+/* ---------- state ---------- */
+let db, currentLessonId = LESSONS[0].id;
+const progressKey = 'sqlcourse_progress_v1';
+let progress = JSON.parse(localStorage.getItem(progressKey) || '{}');
+
+function saveProgress(){ localStorage.setItem(progressKey, JSON.stringify(progress)); }
+
+function resetDb(){
+  db = new SQL.Database();
+  db.run(SCHEMA_SQL);
+}
+
+function rowsToObjects(result){
+  if(!result || !result.length) return {columns:[], rows:[]};
+  return {columns: result[0].columns, rows: result[0].values};
+}
+
+function normalizeRows(columns, rows){
+  return rows.map(r => JSON.stringify(r.map(v => v === null ? null : (typeof v === 'number' ? v : String(v)))))
+              .sort();
+}
+
+function renderTable(columns, rows){
+  if(!columns.length) return '<p style="color:var(--dim)">(no rows returned)</p>';
+  let html = '<table class="result"><thead><tr>' +
+    columns.map(c=>`<th>${escapeHtml(c)}</th>`).join('') + '</tr></thead><tbody>';
+  for(const row of rows){
+    html += '<tr>' + row.map(v=>`<td>${v===null?'<i style="color:var(--dim)">NULL</i>':escapeHtml(String(v))}</td>`).join('') + '</tr>';
+  }
+  html += '</tbody></table>';
+  return `<div class="tablewrap">${html}</div>`;
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.opacity = 1;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>{ t.style.opacity = 0; }, 1800);
+}
+
+/* ---------- sidebar ---------- */
+function renderSidebar(){
+  const list = document.getElementById('lesson-list');
+  let html = '';
+  let lastSection = null;
+  for(const lesson of LESSONS){
+    if(lesson.section !== lastSection){
+      html += `<div class="section-title">${lesson.section}</div>`;
+      lastSection = lesson.section;
+    }
+    const done = !!progress[lesson.id];
+    html += `<div class="lesson-item ${lesson.id===currentLessonId?'active':''}" data-id="${lesson.id}">
+      <span class="check ${done?'done':''}">${done?'✓':''}</span>${lesson.title}</div>`;
+  }
+  list.innerHTML = html;
+  list.querySelectorAll('.lesson-item').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      loadLesson(el.dataset.id);
+      if(window.innerWidth <= 768) toggleSidebar(false);
+    });
+  });
+  const total = LESSONS.filter(l=>!l.noCheck).length;
+  const done = LESSONS.filter(l=>!l.noCheck && progress[l.id]).length;
+  document.getElementById('progress-text').textContent = `${done}/${total}`;
+  document.getElementById('progress-fill').style.width = total? `${(done/total)*100}%` : '0%';
+}
+
+/* ---------- schema panel ---------- */
+function renderSchemaPanel(){
+  const tables = [
+    ['departments', ['id','name','location']],
+    ['employees', ['id','name','department_id','manager_id','salary','hire_date']],
+    ['customers', ['id','name','city','country']],
+    ['products', ['id','name','category','price']],
+    ['orders', ['id','customer_id','employee_id','order_date','status']],
+    ['order_items', ['id','order_id','product_id','quantity','unit_price']],
+  ];
+  let html = '<h3 style="margin-top:0">Database Schema</h3>';
+  for(const [name, cols] of tables){
+    html += `<div class="tbl-def">
+      <div class="tbl-def-head">
+        <h4>${name}</h4>
+        <button class="preview-btn" data-table="${name}">👁 view data</button>
+      </div>
+      <ul>${cols.map(c=>`<li>${c}</li>`).join('')}</ul>
+      <div class="preview-wrap" id="preview-${name}"></div>
+    </div>`;
+  }
+  document.getElementById('schema-panel').innerHTML = html;
+  document.querySelectorAll('.preview-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> togglePreview(btn.dataset.table));
+  });
+}
+function togglePreview(table){
+  const wrap = document.getElementById(`preview-${table}`);
+  const showing = wrap.classList.contains('shown');
+  if(showing){
+    wrap.classList.remove('shown');
+    document.getElementById('schema-panel').classList.remove('wide');
+    return;
+  }
+  document.querySelectorAll('.preview-wrap.shown').forEach(w=>w.classList.remove('shown'));
+  try{
+    const {columns, rows} = rowsToObjects(db.exec(`SELECT * FROM ${table} LIMIT 100`));
+    wrap.innerHTML = renderTable(columns, rows) +
+      `<p style="color:var(--dim);font-size:11px;margin:4px 0 0">showing up to 100 rows, live from the database</p>`;
+  }catch(err){
+    wrap.innerHTML = `<div class="feedback err">⚠ ${escapeHtml(err.message)}</div>`;
+  }
+  wrap.classList.add('shown');
+  document.getElementById('schema-panel').classList.add('wide');
+}
+function toggleSchema(){
+  document.getElementById('schema-panel').classList.toggle('open');
+}
+function toggleSidebar(force){
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  const open = typeof force === 'boolean' ? force : !sidebar.classList.contains('open');
+  sidebar.classList.toggle('open', open);
+  overlay.classList.toggle('show', open);
+}
+
+/* ---------- lesson rendering ---------- */
+function loadLesson(id){
+  currentLessonId = id;
+  const lesson = LESSONS.find(l=>l.id===id);
+  renderSidebar();
+  const main = document.getElementById('main');
+  main.innerHTML = `
+    <h2>${lesson.title}</h2>
+    <div class="lesson-body">${lesson.body}</div>
+    <div class="task">
+      <h3>Exercise</h3>
+      <div>${lesson.task}</div>
+      <textarea id="editor" spellcheck="false">${lesson.starter || ''}</textarea>
+      <div class="btnrow">
+        <button id="run-btn">▶ Run</button>
+        ${lesson.noCheck ? '' : '<button id="check-btn" class="secondary">✓ Check Answer</button>'}
+        ${lesson.noCheck ? '' : '<span class="hint" id="hint-toggle">Show hint</span>'}
+        ${lesson.noCheck ? '' : '<span class="hint" id="sol-toggle">Show solution</span>'}
+        <button id="nav-prev" class="secondary">← Prev</button>
+        <button id="nav-next" class="secondary">Next →</button>
+      </div>
+      ${lesson.noCheck ? '' : `<div class="hintbox" id="hintbox">💡 ${lesson.hint||''}</div>`}
+      ${lesson.noCheck ? '' : `<div class="solbox" id="solbox"><pre class="example">${escapeHtml(lesson.solution||'')}</pre></div>`}
+      <div id="result-area"></div>
+    </div>
+  `;
+  document.getElementById('run-btn').addEventListener('click', ()=>runQuery(lesson));
+  if(!lesson.noCheck){
+    document.getElementById('check-btn').addEventListener('click', ()=>checkAnswer(lesson));
+    document.getElementById('hint-toggle').addEventListener('click', (e)=>{
+      const box = document.getElementById('hintbox');
+      box.style.display = box.style.display==='block' ? 'none' : 'block';
+    });
+    document.getElementById('sol-toggle').addEventListener('click', (e)=>{
+      const box = document.getElementById('solbox');
+      box.style.display = box.style.display==='block' ? 'none' : 'block';
+    });
+  }
+  document.getElementById('nav-prev').addEventListener('click', ()=>navLesson(-1));
+  document.getElementById('nav-next').addEventListener('click', ()=>navLesson(1));
+
+  const editor = document.getElementById('editor');
+  editor.addEventListener('keydown', (e)=>{
+    if((e.ctrlKey||e.metaKey) && e.key === 'Enter'){ e.preventDefault(); runQuery(lesson); }
+  });
+}
+
+function navLesson(delta){
+  const idx = LESSONS.findIndex(l=>l.id===currentLessonId);
+  const next = LESSONS[idx+delta];
+  if(next) loadLesson(next.id);
+}
+
+function runQuery(lesson){
+  const sql = document.getElementById('editor').value;
+  const area = document.getElementById('result-area');
+  try{
+    const result = db.exec(sql);
+    const {columns, rows} = rowsToObjects(result);
+    area.innerHTML = renderTable(columns, rows);
+  }catch(err){
+    area.innerHTML = `<div class="feedback err">⚠ ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function checkAnswer(lesson){
+  const userSql = document.getElementById('editor').value;
+  const area = document.getElementById('result-area');
+  try{
+    if(lesson.checkMode === 'table'){
+      // run user statement(s), then compare table contents to solution's effect
+      const before = new SQL.Database();
+      before.run(SCHEMA_SQL);
+      const after = new SQL.Database();
+      after.run(SCHEMA_SQL);
+      after.run(userSql);
+      const expected = new SQL.Database();
+      expected.run(SCHEMA_SQL);
+      expected.run(lesson.solution);
+
+      const a = rowsToObjects(after.exec(`SELECT * FROM ${lesson.checkTable}`));
+      const e = rowsToObjects(expected.exec(`SELECT * FROM ${lesson.checkTable}`));
+      const aNorm = normalizeRows(a.columns, a.rows);
+      const eNorm = normalizeRows(e.columns, e.rows);
+      const ok = JSON.stringify(aNorm) === JSON.stringify(eNorm);
+      area.innerHTML = renderTable(a.columns, a.rows);
+      showFeedback(area, ok, lesson);
+      return;
+    }
+
+    const userResult = rowsToObjects(db.exec(userSql));
+    const solResult = rowsToObjects(db.exec(lesson.solution));
+    area.innerHTML = renderTable(userResult.columns, userResult.rows);
+
+    const sameColCount = userResult.columns.length === solResult.columns.length;
+    const userNorm = normalizeRows(userResult.columns, userResult.rows);
+    const solNorm = normalizeRows(solResult.columns, solResult.rows);
+    const ok = sameColCount && JSON.stringify(userNorm) === JSON.stringify(solNorm);
+    showFeedback(area, ok, lesson);
+  }catch(err){
+    area.innerHTML = `<div class="feedback err">⚠ ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function showFeedback(area, ok, lesson){
+  const fb = document.createElement('div');
+  fb.className = 'feedback ' + (ok ? 'ok' : 'err');
+  fb.textContent = ok ? '✓ Correct! Nice work.' : '✗ Not quite — compare your output to what\'s expected, or check the hint/solution.';
+  area.appendChild(fb);
+  if(ok && !progress[lesson.id]){
+    progress[lesson.id] = true;
+    saveProgress();
+    renderSidebar();
+    toast('Lesson complete! 🎉');
+  }
+}
+
+/* ---------- boot ---------- */
+function base64ToUint8Array(b64){
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+window.initSqlJs({ wasmBinary: base64ToUint8Array(window.SQL_WASM_BASE64) }).then(SQLlib => {
+  window.SQL = SQLlib;
+  resetDb();
+  renderSidebar();
+  renderSchemaPanel();
+  loadLesson(currentLessonId);
+}).catch(err=>{
+  document.getElementById('main').innerHTML =
+    `<div class="loading">Failed to load SQL engine: ${escapeHtml(err.message)}</div>`;
+});
+</script>
+</body>
+</html>
